@@ -1,0 +1,246 @@
+---
+title: "NIVELES DE PORCINAZA Y DENSIDADES DE SIEMBRA SOBRE EL RENDIMIENTO DE MAÍZ MORADO (Zea mays L.) var. INIA-601 EN LÁMUD"
+author: "Milver Huaman"
+format: html
+editor: visual
+---
+
+## librerias
+
+```{r}
+library(tidyverse)
+library(googlesheets4)
+library(emmeans)
+library(lme4)
+
+```
+
+## Cargar base de datos
+https://docs.google.com/spreadsheets/d/1o4mtAkI1lBgoUzqDT-e7cIhIwh_K5m6CoxAx0ETvwXU/edit?gid=1955940309#gid=1955940309
+
+```{r}
+url <- "https://docs.google.com/spreadsheets/d/1o4mtAkI1lBgoUzqDT-e7cIhIwh_K5m6CoxAx0ETvwXU/edit?gid=1753270824#gid=1753270824"
+gs <- url %>% 
+  as_sheets_id()
+
+fb <- gs %>% 
+  range_read("fb") %>% 
+  mutate(across(1:bloque, ~as.factor(.)))
+
+str(fb)
+```
+## Modelo lineal mixto
+$$ porcinaza_[rendiminto]= \mu + bloque + porcinaza + densidad + porcinaza*densidad + e $$
+#ANALISIS DE VARIANZA
+
+```{r}
+md <- lmer(formula = rendiminto_g_ha ~ 0 + (1|bloque) + porcinaza*densidad
+           , data = fb)
+anova(md)
+```
+```{r}
+
+library(car)
+
+```
+
+
+```{r}
+
+Anova(md)
+
+```
+#comparación de medias
+
+```{r}
+library(emmeans)
+
+# Comparaciones múltiples de densidad
+emmeans(md, pairwise ~ densidad, adjust = "tukey")
+emmeans(md, pairwise ~ porcinaza, adjust = "tukey")
+emmeans(md, pairwise ~ porcinaza * densidad, adjust = "tukey")
+```
+
+m
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+# Asegura que las variables estén correctamente definidas
+fb <- fb %>%
+  mutate(
+    porcinaza = as.factor(porcinaza),
+    densidad = as.factor(densidad)
+  )
+
+# Gráfico corregido y mejorado
+ggplot(fb, aes(x = porcinaza, y = rendiminto_g_ha, fill = porcinaza)) +
+  geom_boxplot(alpha = 0.8, outlier.color = "green", color = "blue") +
+  facet_wrap(~ densidad) +
+  labs(
+    title = "Interacción entre Porcinaza y Densidad en el rendimiento (g/ha)",
+    x = "Porcinaza",
+    y = "Rendiminto (g/ha)"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 15),
+    strip.text = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+```
+
+otros gráficos
+
+```{r}
+library(ggplot2)
+
+emm <- emmeans(md, ~ porcinaza * densidad)
+emm_df <- as.data.frame(emm)
+
+ggplot(emm_df, aes(x = porcinaza, y = emmean, color = densidad, group = densidad)) +
+  geom_point(size = 3) +
+  geom_line(linewidth = 1) +
+  geom_errorbar(aes(ymin = emmean - SE, ymax = emmean + SE), width = 0.2) +
+  labs(
+    title = "Efecto de la interacción entre Porcinaza y Densidad",
+    x = "Porcinaza",
+    y = "Altura de planta a los 30 días (cm)",
+    color = "Densidad"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+```
+
+#Variable 6 (longitud de mazorcas)
+
+$$ porcinaza_[longitud_m]= \mu + bloque + porcinaza + densidad + porcinaza*densidad + e $$
+#ANALISIS DE VARIANZA
+
+```{r}
+str(fb$longitud_m)
+
+```
+```{r}
+# --- LIBRERÍAS ---
+library(lme4)
+library(car)
+
+# --- LIMPIEZA Y PREPARACIÓN DE DATOS ---
+# Quitar espacios en los nombres de las columnas
+names(fb) <- trimws(names(fb))
+
+# Corregir formato de la variable respuesta
+fb$longitud_m <- unlist(fb$longitud_m)
+fb$longitud_m <- as.numeric(fb$longitud_m)
+
+# Asegurar que los factores estén bien definidos
+fb$porcinaza <- as.factor(fb$porcinaza)
+fb$densidad  <- as.factor(fb$densidad)
+fb$bloque    <- as.factor(fb$bloque)
+
+# --- MODELO LINEAL MIXTO ---
+md <- lmer(longitud_m ~ porcinaza * densidad + (1|bloque), data = fb)
+
+# --- ANÁLISIS DE VARIANZA ---
+anova(md)
+
+# ANOVA tipo III (más completo)
+Anova(md, type = 3)
+
+# --- SUPUESTOS ---
+# Normalidad de residuos
+shapiro.test(residuals(md))
+
+# QQ plot
+qqnorm(residuals(md)); qqline(residuals(md))
+
+# Homogeneidad de varianzas
+plot(fitted(md), residuals(md)); abline(h = 0, lty = 2)
+
+```
+
+
+
+
+```{r}
+# Modelo mixto para la variable Longitud de mazorca
+library(lme4)
+library(car)
+library(emmeans)
+library(ggplot2)
+
+# Modelo lineal mixto
+md <- lmer(formula = longitud_m ~ porcinaza * densidad + (1|bloque), data = fb)
+
+# ANÁLISIS DE VARIANZA
+anova(md)
+
+# Si deseas un ANOVA tipo III (más completo)
+Anova(md, type = 3)
+
+```
+
+
+```{r}
+# --- LIBRERÍAS ---
+library(ggplot2)
+library(emmeans)
+library(dplyr)
+
+# --- MEDIAS AJUSTADAS (EMMEANS) ---
+emm <- emmeans(md, ~ porcinaza * densidad)
+
+# Convertir a data frame
+emm_df <- as.data.frame(emm)
+
+# --- 1️⃣ GRÁFICO DE INTERACCIÓN ---
+ggplot(emm_df, aes(x = porcinaza, y = emmean, color = densidad, group = densidad)) +
+  geom_point(size = 3) +
+  geom_line(linewidth = 1) +
+  geom_errorbar(aes(ymin = emmean - SE, ymax = emmean + SE), width = 0.1) +
+  labs(
+    title = "Interacción entre Porcinaza y Densidad",
+    x = "Porcinaza",
+    y = "Longitud de mazorca (cm)",
+    color = "Densidad"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "top")
+
+# --- 2️⃣ EFECTO PRINCIPAL DE PORCINAZA ---
+emm_porc <- emmeans(md, ~ porcinaza)
+emm_porc_df <- as.data.frame(emm_porc)
+
+ggplot(emm_porc_df, aes(x = porcinaza, y = emmean, fill = porcinaza)) +
+  geom_col(alpha = 0.8) +
+  geom_errorbar(aes(ymin = emmean - SE, ymax = emmean + SE), width = 0.2) +
+  labs(
+    title = "Efecto principal de la Porcinaza",
+    x = "Porcinaza",
+    y = "Longitud de mazorca (cm)"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "none")
+
+# --- 3️⃣ EFECTO PRINCIPAL DE DENSIDAD ---
+emm_den <- emmeans(md, ~ densidad)
+emm_den_df <- as.data.frame(emm_den)
+
+ggplot(emm_den_df, aes(x = densidad, y = emmean, fill = densidad)) +
+  geom_col(alpha = 0.8) +
+  geom_errorbar(aes(ymin = emmean - SE, ymax = emmean + SE), width = 0.2) +
+  labs(
+    title = "Efecto principal de la Densidad",
+    x = "Densidad",
+    y = "Longitud de mazorca (cm)"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "none")
+
+```
+
+
